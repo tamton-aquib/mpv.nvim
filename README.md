@@ -4,7 +4,7 @@ A music player inside neovim that uses [mpv](https://github.com/mpv-player/mpv).
 
 Extracted from [stuff.nvim](https://github.com/tamton-aquib/stuff.nvim).
 
-> **Note: **
+> **Note**
 > This is an experimental plugin without any proper testing.
 
 ### Showcase
