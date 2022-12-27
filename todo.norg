@@ -1,0 +1,11 @@
+
+* Todos
+  - ( ) Try with sockets (\`uv.new_pipe()\`)
+  - ( ) visual bars as statusline components.
+  - ( ) rich presence (optional)
+  - ( ) Implement a queue feature? (idk)
+  - ( ) Dont update extmarks if but not visible.
+  - ( ) visualizer component
+  - ( ) cleanify
+  - ( ) support for playing offline libraries.
+
