@@ -4,7 +4,7 @@
 --- >: next               <: prev (in playlists)
 
 local M = {buf=nil, win=nil, ns=vim.api.nvim_create_namespace("mpv"), content_id=nil, title_id=nil}
-local conf = { width=50, height=5, border='single' }
+local conf = { width=50, height=5, border='single', setup_widgets=false, timer={after=1000, throttle=500} }
 local state = {playing=false, jobid=nil, title=nil, paused=false, timing="", percent=0, muted=false, loaded=false}
 local win_opts = {relative='editor', style='minimal', border=conf.border, row=1, col=vim.o.columns-conf.width-2, height=conf.height, width=conf.width } -- , title='Mpv', title_pos='center' }
 local hls = {title="String", timer="Identifier", progress="Function"}
@@ -19,7 +19,7 @@ local refresh_screen = function()
 
     local dur = math.floor((state.percent/100) * conf.width)
     vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-        virt_text = {{state.title, hls.title}}, virt_text_pos='overlay',
+        virt_text = {{state.title or 'Not Playing', hls.title}}, virt_text_pos='overlay',
         id=M.title_id
     })
 
@@ -72,7 +72,7 @@ M.toggle_player = function()
     M.win = vim.api.nvim_open_win(M.buf, true, win_opts)
 
     M.title_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-        virt_text={{state.title or '', hls.title}}, virt_text_pos='overlay'
+        virt_text={{state.title or 'Not Playing', hls.title}}, virt_text_pos='overlay'
     })
 
     M.content_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
@@ -133,9 +133,11 @@ M.toggle_player = function()
                         end
                     end
                 end,
+
                 on_exit = function()
                     state.playing = false
                     state.title = nil
+                    refresh_screen()
                 end
             })
             state.playing = true
@@ -144,14 +146,16 @@ M.toggle_player = function()
 
     local map = function(bind, to, fn)
         vim.keymap.set('n', bind, function()
-            vim.api.nvim_chan_send(state.jobid, to)
-            if fn then fn() end
-            refresh_screen()
+            if state.jobid then
+                vim.api.nvim_chan_send(state.jobid, to)
+                if fn then fn() end
+                refresh_screen()
+            end
         end, {buffer=M.buf})
     end
 
     map('q', 'q', function()
-        state.title = 'Not Playing.'
+        state.title = 'Not Playing'
         state.percent = 0
         refresh_screen()
     end)
@@ -168,8 +172,26 @@ M.toggle_player = function()
 end
 
 M.setup = function(opts)
+    vim.g.mpv_title = ""
     conf = vim.tbl_deep_extend('force', conf, opts or {})
     vim.api.nvim_create_user_command('MpvToggle', M.toggle_player, {desc="Toggles the music player."})
+
+    if conf.setup_widgets then
+        local sub = 1
+        vim.loop.new_timer():start(conf.timer.after, conf.timer.throttle, vim.schedule_wrap(function()
+            if state.playing then
+                if state.title then
+                    local t = state.title
+                    if t:len() <= 15 then return end
+                    if sub + 15 >= t:len() then sub = 1 end
+
+                    t = t:sub(sub, sub+15)
+                    sub = sub + 1
+                    vim.g.mpv_title = t
+                end
+            end
+        end))
+    end
 end
 
 return M

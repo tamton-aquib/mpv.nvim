@@ -36,6 +36,30 @@ https://user-images.githubusercontent.com/77913442/209674116-7a4bd2e8-e286-4aa6-
 | `>` / `<` | next/prev in playlist |
 | `m` | mute/unmute |
 
+<details>
+
+<summary>Statusline/Tabline components</summary>
+
+> make sure you set `setup_widgets` to `true` inside `setup()`
+```lua
+local mpv = require("mpv")
+
+require("lualine").setup {
+    sections = {
+        lualine_c = {
+            {
+                function() return ' ' end,
+                color='green',
+                on_click=mpv.toggle_player
+            },
+            'g:mpv_title'
+        },
+    }
+}
+```
+
+</details>
+
 ### Features
 - search by keyword.
 - paste links from youtube (playlists too).
