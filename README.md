@@ -42,15 +42,14 @@ https://user-images.githubusercontent.com/77913442/209674116-7a4bd2e8-e286-4aa6-
 
 > make sure you set `setup_widgets` to `true` inside `setup()`
 ```lua
-local mpv = require("mpv")
-
+-- Components are: g:mpv_title, g:mpv_visualizer, g:mpv_percent
 require("lualine").setup {
     sections = {
         lualine_c = {
             {
-                function() return ' ' end,
+                function() return '  ' end,
                 color='green',
-                on_click=mpv.toggle_player
+                on_click=require("mpv").toggle_player
             },
             'g:mpv_title'
         },

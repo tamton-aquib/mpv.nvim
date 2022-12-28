@@ -4,7 +4,7 @@
 --- >: next               <: prev (in playlists)
 
 local M = {buf=nil, win=nil, ns=vim.api.nvim_create_namespace("mpv"), content_id=nil, title_id=nil}
-local conf = { width=50, height=5, border='single', setup_widgets=false, timer={after=1000, throttle=500} }
+local conf = { width=50, height=5, border='single', setup_widgets=false, timer={after=1000, throttle=250} }
 local state = {playing=false, jobid=nil, title=nil, paused=false, timing="", percent=0, muted=false, loaded=false}
 local win_opts = {relative='editor', style='minimal', border=conf.border, row=1, col=vim.o.columns-conf.width-2, height=conf.height, width=conf.width } -- , title='Mpv', title_pos='center' }
 local hls = {title="String", timer="Identifier", progress="Function"}
@@ -14,8 +14,10 @@ M.music_info = function() return state end
 
 local by3 = (" "):rep(math.floor(conf.width/4)-1)
 local refresh_screen = function()
+    if not state.loaded then return end
+
     local chars = { "🯅", "🯆", "🯇", "🯈" }
-    local char = chars[math.floor(math.random() * #chars) + 1]
+    local char = chars[math.random(#chars)]
 
     local dur = math.floor((state.percent/100) * conf.width)
     vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
@@ -51,7 +53,6 @@ local left_mouse = function()
     if (mouse.winrow-1) == conf.height and math.abs(pause - mouse.wincol) < 3 then
         state.paused = not state.paused
         vim.api.nvim_chan_send(state.jobid, 'p')
-        -- vim.pretty_print("Clear")
     elseif (mouse.winrow-1) == conf.height and math.abs(prev - mouse.wincol) < 3 then
         vim.api.nvim_chan_send(state.jobid, '<')
     elseif (mouse.winrow-1) == conf.height and math.abs(next - mouse.wincol) < 3 then
@@ -171,26 +172,48 @@ M.toggle_player = function()
     state.loaded = true
 end
 
+local setup_widgets = function()
+    local sub = 1
+    local block_chars = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" }
+    local blocks = {}
+    for _=1, 8 do table.insert(blocks, {n=math.random(8), diff=math.random(2)==1 and 1 or -1}) end
+
+    local timer = vim.loop.new_timer()
+    timer:start(conf.timer.after, conf.timer.throttle, vim.schedule_wrap(function()
+        if state.playing then
+            if state.title then
+                local t = state.title
+                if t:len() <= 15 then return end
+                if sub + 15 >= t:len() then sub = 1 end
+
+                t = t:sub(sub, sub+15)
+                sub = sub + 1
+                vim.g.mpv_title = t
+            end
+
+            local cleaned_blocks = {}
+            for i=1,8 do
+                local b = blocks[i]
+                if (b.n==1 and b.diff==-1) or (b.n==8 and b.diff==1) then
+                    blocks[i].diff = -(blocks[i].diff)
+                end
+
+                blocks[i].n = b.n + b.diff
+                table.insert(cleaned_blocks, block_chars[blocks[i].n])
+            end
+
+            vim.g.mpv_visualizer = table.concat(cleaned_blocks)
+        end
+    end))
+end
 M.setup = function(opts)
     vim.g.mpv_title = ""
     conf = vim.tbl_deep_extend('force', conf, opts or {})
     vim.api.nvim_create_user_command('MpvToggle', M.toggle_player, {desc="Toggles the music player."})
 
     if conf.setup_widgets then
-        local sub = 1
-        vim.loop.new_timer():start(conf.timer.after, conf.timer.throttle, vim.schedule_wrap(function()
-            if state.playing then
-                if state.title then
-                    local t = state.title
-                    if t:len() <= 15 then return end
-                    if sub + 15 >= t:len() then sub = 1 end
-
-                    t = t:sub(sub, sub+15)
-                    sub = sub + 1
-                    vim.g.mpv_title = t
-                end
-            end
-        end))
+        vim.g.mpv_percent = state.percent
+        setup_widgets()
     end
 end
 
