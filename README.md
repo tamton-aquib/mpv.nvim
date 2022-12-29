@@ -26,6 +26,24 @@ https://user-images.githubusercontent.com/77913442/209674116-7a4bd2e8-e286-4aa6-
 - The command: `:MpvToggle`
 - The actual api: `require("mpv").toggle_player()`
 
+> <details>
+> <summary>Click to view default config</summary>
+>
+> ```lua
+> require("mpv").setup {
+>     width = 50,
+>     height = 5,              -- Changing these two might break the UI 😬
+>     border = 'single',
+>     setup_widgets = false,   -- to activate the widget components
+>     timer = {
+>         after = 1000,
+>         throttle = 250,      -- Update time for the widgets. (lesser the faster)
+>     }
+> }
+> ```
+
+</details>
+
 - Keymaps:
 
 |key| action |
@@ -36,28 +54,27 @@ https://user-images.githubusercontent.com/77913442/209674116-7a4bd2e8-e286-4aa6-
 | `>` / `<` | next/prev in playlist |
 | `m` | mute/unmute |
 
-<details>
-
-<summary>Statusline/Tabline components</summary>
-
+> <details>
+> <summary>Statusline/Tabline components</summary>
+>
 > make sure you set `setup_widgets` to `true` inside `setup()`
-```lua
--- Components are: g:mpv_title, g:mpv_visualizer, g:mpv_percent
-require("lualine").setup {
-    sections = {
-        lualine_c = {
-            {
-                function() return '  ' end,
-                color='green',
-                on_click=require("mpv").toggle_player
-            },
-            'g:mpv_title'
-        },
-    }
-}
-```
-
-</details>
+> ```lua
+> -- Components are: g:mpv_title, g:mpv_visualizer, g:mpv_percent
+> require("lualine").setup {
+>     sections = {
+>         lualine_c = {
+>             {
+>                 function() return '  ' end,
+>                 color='green',
+>                 on_click=require("mpv").toggle_player
+>             },
+>             'g:mpv_title'
+>         },
+>     }
+> }
+> ```
+>
+> </details>
 
 ### Features
 - search by keyword.
