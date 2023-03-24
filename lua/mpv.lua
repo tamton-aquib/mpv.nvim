@@ -147,7 +147,7 @@ M.toggle_player = function()
 		end
 
 		vim.ui.input({ width = 40 }, function(query)
-			if query == nil or "" then
+			if query == nil then
 				vim.cmd [[ lua require("notify")("No query provided")]]
 				return
 			end
