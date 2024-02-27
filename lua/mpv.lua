@@ -23,7 +23,7 @@ local refresh_screen = function()
     local dur = math.floor((state.percent/100) * conf.width)
     vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
         virt_text = {{state.title or 'Not Playing', hls.title}}, virt_text_pos='overlay',
-        id=M.title_id
+        id = M.title_id
     })
 
     local time1, time2 = unpack(vim.split(state.timing, ' / '))
@@ -109,7 +109,7 @@ M.toggle_player = function()
                 virt_text = {{'Searching for "'..query..'"...', hls.title}}, virt_text_pos='overlay', id=M.title_id
             })
 
-            if not query:match([[https://(www.)\?youtube.com]]) then
+            if not query:match([[https://.*youtube.com]]) then
                 query = "ytdl://ytsearch:"..table.concat(vim.split(query, ' '), '+')
             end
 
