@@ -16,7 +16,8 @@ local by3 = (" "):rep(math.floor(conf.width/4)-1)
 local refresh_screen = function()
     if not state.loaded then return end
 
-    local chars = { "🯅", "🯆", "🯇", "🯈" }
+    -- local chars = { "🯅", "🯆", "🯇", "🯈" }
+    local chars = { "󰽰" }
     local char = chars[math.random(#chars)]
 
     local dur = math.floor((state.percent/100) * conf.width)
@@ -27,7 +28,7 @@ local refresh_screen = function()
 
     local time1, time2 = unpack(vim.split(state.timing, ' / '))
     vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-        virt_lines={
+        virt_lines = {
             {
                 {time1, hls.timer}, {(" "):rep(conf.width - 16)}, {time2, hls.timer}
             },
@@ -36,10 +37,10 @@ local refresh_screen = function()
             },
             {{"", ""}},
             {
-                {by3.."ﲑ", hls.progress}, {by3..(not state.paused and "" or ""), hls.progress}, {by3.."ﲒ", hls.progress}
+                {by3.."󰞓 ", hls.progress}, {by3..(not state.paused and "" or ""), hls.progress}, {by3.."󰞔 ", hls.progress}
             }
         },
-        id=M.content_id
+        id = M.content_id
     })
 end
 
@@ -62,22 +63,22 @@ local left_mouse = function()
 end
 
 M.toggle_player = function()
-    if state.loaded then
+    if state.loaded and vim.api.nvim_win_is_valid(M.win) then
         vim.api.nvim_win_hide(M.win)
         state.loaded = false
         return
     end
 
     M.buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_buf_set_option(M.buf, 'filetype', 'mpv')
+    vim.opt_local[M.buf].filetype = 'mpv'
     M.win = vim.api.nvim_open_win(M.buf, true, win_opts)
 
     M.title_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-        virt_text={{state.title or 'Not Playing', hls.title}}, virt_text_pos='overlay'
+        virt_text = {{state.title or 'Not Playing', hls.title}}, virt_text_pos='overlay'
     })
 
     M.content_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-        virt_lines={
+        virt_lines = {
             {
                 {state.timing, hls.timer}
             },
@@ -86,7 +87,7 @@ M.toggle_player = function()
             },
             {{"", ""}},
             {
-                {by3.."ﲑ", hls.progress}, {by3..(state.paused and "" or ""), hls.progress}, {by3.."ﲒ", hls.progress}
+                {by3.."󰞓 ", hls.progress}, {by3..(state.paused and "" or ""), hls.progress}, {by3.."󰞔 ", hls.progress}
             }
         },
     })
@@ -105,18 +106,18 @@ M.toggle_player = function()
             end
 
             M.title_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-                virt_text={{'Searching for "'..query..'"...', hls.title}}, virt_text_pos='overlay', id=M.title_id
+                virt_text = {{'Searching for "'..query..'"...', hls.title}}, virt_text_pos='overlay', id=M.title_id
             })
 
             if not query:match([[https://(www.)\?youtube.com]]) then
                 query = "ytdl://ytsearch:"..table.concat(vim.split(query, ' '), '+')
             end
 
-            local command = {"mpv", "--term-playing-msg='${media-title}'", "--no-video", query}
+            local command = { "mpv", "--term-playing-msg='${media-title}'", "--no-video", query }
 
             state.jobid = vim.fn.jobstart(command, {
-                pty=true,
-                on_stdout=function(_, data)
+                pty = true,
+                on_stdout = function(_, data)
                     if data then
                         local time = data[1]:match([[%d%d:%d%d:%d%d / %d%d:%d%d:%d%d]])
                         local percent = data[1]:match([[(%d%d?%%)]])
@@ -143,7 +144,7 @@ M.toggle_player = function()
             })
             state.playing = true
         end)
-    end, {buffer=M.buf})
+    end, { buffer = M.buf })
 
     local map = function(bind, to, fn)
         vim.keymap.set('n', bind, function()
@@ -152,7 +153,7 @@ M.toggle_player = function()
                 if fn then fn() end
                 refresh_screen()
             end
-        end, {buffer=M.buf})
+        end, { buffer = M.buf })
     end
 
     map('q', 'q', function()
@@ -194,7 +195,7 @@ local setup_widgets = function()
             local cleaned_blocks = {}
             for i=1,8 do
                 local b = blocks[i]
-                if (b.n==1 and b.diff==-1) or (b.n==8 and b.diff==1) then
+                if (b.n == 1 and b.diff == -1) or (b.n == 8 and b.diff == 1) then
                     blocks[i].diff = -(blocks[i].diff)
                 end
 
