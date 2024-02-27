@@ -70,7 +70,7 @@ M.toggle_player = function()
     end
 
     M.buf = vim.api.nvim_create_buf(false, true)
-    vim.opt_local[M.buf].filetype = 'mpv'
+    vim.bo[M.buf].filetype = 'mpv'
     M.win = vim.api.nvim_open_win(M.buf, true, win_opts)
 
     M.title_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
@@ -204,9 +204,11 @@ local setup_widgets = function()
             end
 
             vim.g.mpv_visualizer = table.concat(cleaned_blocks)
+            vim.cmd.redrawstatus()
         end
     end))
 end
+
 M.setup = function(opts)
     vim.g.mpv_title = ""
     conf = vim.tbl_deep_extend('force', conf, opts or {})
