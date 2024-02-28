@@ -11,6 +11,8 @@ local win_opts = {relative='editor', style='minimal', border=conf.border, row=1,
 local hls = {title="String", timer="Identifier", progress="Function"}
 local queue = {}
 
+local actions = require("mpv.actions")
+
 -- NOTE: for statusline components
 M.music_info = function() return state end
 
@@ -23,7 +25,7 @@ local refresh_screen = function()
 
     local dur = math.floor((state.percent/100) * conf.width)
     vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
-        virt_text = {{state.title or (#queue >=0 and queue[1] or 'Not Playing'), hls.title}}, virt_text_pos='overlay',
+        virt_text = {{state.title or (#queue >= 0 and queue[1] or 'Not Playing'), hls.title}}, virt_text_pos='overlay',
         id = M.title_id
     })
 
@@ -45,30 +47,13 @@ local refresh_screen = function()
     })
 end
 
-local left_mouse = function()
-    local mouse = vim.fn.getmousepos()
-    if M.win ~= mouse.winid then return end
-
-    local pause = math.floor(conf.width/2)
-    local prev = math.floor(conf.width/4)
-    local next = math.floor(3 * (conf.width/4))
-    if (mouse.winrow-1) == conf.height and math.abs(pause - mouse.wincol) < 3 then
-        state.paused = not state.paused
-        vim.api.nvim_chan_send(state.jobid, 'p')
-    elseif (mouse.winrow-1) == conf.height and math.abs(prev - mouse.wincol) < 3 then
-        vim.api.nvim_chan_send(state.jobid, '<')
-    elseif (mouse.winrow-1) == conf.height and math.abs(next - mouse.wincol) < 3 then
-        vim.api.nvim_chan_send(state.jobid, '>')
-    end
-    refresh_screen()
-end
-
 local function play_song(query)
     local command = { "mpv", "--term-playing-msg='${media-title}'", "--no-video", query }
     state.jobid = vim.fn.jobstart(command, {
         pty = true,
         on_stdout = function(_, data)
             if data then
+                -- vim.print(vim.api.nvim_list_bufs())
                 local time = data[1]:match([[%d%d:%d%d:%d%d / %d%d:%d%d:%d%d]])
                 local percent = data[1]:match([[(%d%d?%%)]])
                 if percent then state.percent = percent:sub(1, -2) end
@@ -100,8 +85,18 @@ local function play_song(query)
     state.playing = true
 end
 
-local function ask_input()
-    vim.ui.input({ width = 40 }, function(query)
+local map = function(bind, to, fn)
+    vim.keymap.set('n', bind, function()
+        if state.jobid then
+            vim.api.nvim_chan_send(state.jobid, to)
+            if fn then fn() end
+            refresh_screen()
+        end
+    end, { buffer = M.buf })
+end
+
+
+local function ask_input(query)
         if query == "" then vim.notify("Query not provided!") return end
         M.title_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, { virt_text = {{'Searching for "'..query..'"...', hls.title}}, virt_text_pos='overlay', id=M.title_id })
         if not query:match([[^https://.*youtube.com]]) then query = "ytdl://ytsearch:"..table.concat(vim.split(query, ' '), '+') end
@@ -114,12 +109,12 @@ local function ask_input()
         else
             table.insert(queue, query)
         end
-    end)
 end
 
 M.toggle_player = function()
     if state.loaded and vim.api.nvim_win_is_valid(M.win) then
-        vim.api.nvim_win_hide(M.win)
+        pcall(vim.api.nvim_buf_delete, M.buf, {force=true})
+        pcall(vim.api.nvim_win_close, M.win, true)
         state.loaded = false
         return
     end
@@ -128,55 +123,51 @@ M.toggle_player = function()
     vim.bo[M.buf].filetype = 'mpv'
     M.win = vim.api.nvim_open_win(M.buf, true, win_opts)
 
+    -- Title for mpv window
     M.title_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
         virt_text = {
             {state.title or (#queue >= 0 and queue[1] or 'Not Playing'), hls.title}
-        }, virt_text_pos='overlay'
+        }, virt_text_pos = 'overlay'
     })
 
+    -- Contents inside mpv window
     M.content_id = vim.api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, {
         virt_lines = {
-            {
-                {state.timing, hls.timer}
-            },
-            {
-                {("▁"):rep(math.floor((state.percent/100) * conf.width)), hls.progress}
-            },
+            -- Time progress / Total time
+            { {state.timing, hls.timer} },
+            -- Progress line
+            { {("▁"):rep(math.floor((state.percent/100) * conf.width)), hls.progress} },
+            -- Empty line
             {{"", ""}},
-            {
-                {by3.."󰞓 ", hls.progress}, {by3..(state.paused and "" or ""), hls.progress}, {by3.."󰞔 ", hls.progress}
-            }
+            -- Controls on the window
+            { {by3.."󰞓 ", hls.progress}, {by3..(state.paused and "" or ""), hls.progress}, {by3.."󰞔 ", hls.progress} }
         },
     })
 
     vim.keymap.set({'n', 'i'}, '<CR>', function()
-        ask_input()
-        local map = function(bind, to, fn)
-            vim.keymap.set('n', bind, function()
-                if state.jobid then
-                    vim.api.nvim_chan_send(state.jobid, to)
-                    if fn then fn() end
-                    refresh_screen()
-                end
-            end, { buffer = M.buf })
-        end
-
-        map('q', 'q', function()
-            state.title = 'Not Playing'
-            state.percent = 0
-            refresh_screen()
-        end)
-        map('p', 'p', function() state.paused = not state.paused end)
-        map('<space>', 'p', function() state.paused = not state.paused end)
-        map('m', 'm', function() state.muted = not state.muted end)
-        map('>', '>')
-        map('<', '<')
-        map('<LeftMouse>', '', left_mouse)
-        -- TODO: add other keys like left and right
-        -- map('<Left>', '\\e[[D')
-        -- map('<Right>', "\\e[[C")
-        state.loaded = true
+        vim.ui.input({ width = 40 }, ask_input)
     end, { buffer = M.buf })
+
+    map('q', 'q', function()
+        state.title = 'Not Playing'
+        state.percent = 0
+        refresh_screen()
+    end)
+    map('p', 'p', function() state.paused = not state.paused end)
+    map('<space>', 'p', function() state.paused = not state.paused end)
+    map('m', 'm', function() state.muted = not state.muted end)
+    map('>', '>')
+    map('<', '<')
+    map('<LeftMouse>', '',
+        function()
+            actions.left_mouse()
+            refresh_screen()
+        end
+    )
+    -- TODO: add other keys like left and right
+    -- map('<Left>', '\\e[[D')
+    -- map('<Right>', "\\e[[C")
+    state.loaded = true
 end
 
 M.setup = function(opts)
