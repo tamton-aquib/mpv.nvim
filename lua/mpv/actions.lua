@@ -1,8 +1,8 @@
 local M = {}
 
-M.left_mouse = function(state, conf)
+M.left_mouse = function(state, conf, win_id)
     local mouse = vim.fn.getmousepos()
-    if M.win ~= mouse.winid then return end
+    if win_id ~= mouse.winid then return end
 
     local pause = math.floor(conf.width/2)
     local prev = math.floor(conf.width/4)
