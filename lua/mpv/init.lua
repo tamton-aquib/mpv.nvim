@@ -160,7 +160,7 @@ M.toggle_player = function()
     map('<', '<')
     map('<LeftMouse>', '',
         function()
-            actions.left_mouse()
+            actions.left_mouse(state, conf, M.win)
             refresh_screen()
         end
     )
